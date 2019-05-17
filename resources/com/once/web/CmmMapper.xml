@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  <mapper namespace="com.once.web.CmmMapper">
+	<resultMap id="chatMap" type="hashMap">
+		<result column="CHAT_SEQ" property="chatSeq" />
+		<result column="CHAT_TEXT" property="chatText" />
+	</resultMap>
+	<!-- Close Price 종가 -->
+	<resultMap id="closePriceMap" type="hashMap">
+		<result column="CPDATE" property="cpdate" />
+		<result column="CP" property="cp" />
+		<result column="CPNUM" property="cpnum" />
+	</resultMap>
+	<resultMap id="customerMap" type="hashMap">
+		<result column="ID" property="userid" />
+		<result column="HQUA" property="holdingQty" /> 
+		<result column="TBPRICE" property="TotalBuyingPrice" />
+	</resultMap>
+	<resultMap id="customerActionMap" type="hashMap">
+		<result column="CSEQ" property="customerActionSeq" />
+		<result column="TITLE" property="title" /> 
+		<result column="CDATE" property="regdate" />
+		<result column="CONTENT" property="content" />
+		<result column="VIEWS" property="numOfViews" />
+	</resultMap>
+	<resultMap id="historyMap" type="hashMap">
+		<result column="SEQ" property="seq" />
+		<result column="TSEQ" property="tseq" />
+		<result column="CURRENT_COUNT" property="currentCount" />
+		<result column="PRICE" property="price" />
+		<result column="DATE" property="date" />
+	</resultMap>
+	<resultMap id="txMap" type="hashMap">
+		<result column="TSEQ" property="txSeq" />
+		<result column="RW" property="accountHeading" /> 
+		<result column="NPRICE" property="currPrice" />
+		<result column="ID" property="userid" />
+		<result column="UNIT" property="coinUnit" />
+		<result column="DATE" property="txDate" />
+		<result column="TPRICE" property="totalTxMoney" />
+		<result column="DMONEY" property="depoMoney" />
+	</resultMap>
+
+<!-- Account -->
+ <insert id="insertAccount" parameterType="hashMap">
+	INSERT INTO ACCOUNT (acnum, money, id)
+	VALUES (#{acnum}, #{money}, #{id})
+  </insert>
+  <select id="selectAccount" resultType="hashMap">
+ 	SELECT *
+	FROM ACCOUNT AS AC 
+	  INNER JOIN CUSTOMERS AS CU
+	  	ON  AC.id LIKE CU.id
+	WHERE AC.id LIKE #{id};
+  </select>
+  <update id="updateBuyAccount" parameterType="hashMap">
+	UPDATE ACCOUNT 
+	SET MONEY = #{bm}
+	WHERE ID LIKE #{id};  
+  </update>
+  <!-- Chat -->
+    <select id="selectCoinArticle" resultMap="chatMap" parameterType="hashMap">
+  	SELECT *
+  	FROM CHAT 
+  	WHERE CHAT_SEQ LIKE #{chatSeq};
+  </select>
+  <!-- Cp -->
+  	<select id="selectCpList" resultMap="closePriceMap" 
+  							parameterType="hashMap">
+		SELECT 
+		DATE_FORMAT(CPDATE,'%Y-%m-%d') as CPDATE,
+		CP,
+		CPNUM
+		 FROM CP
+		WHERE CPNUM LIKE #{cpnum};
+	</select>
+	<!-- Customers -->
+	<insert id="insertCustomer">
+	INSERT INTO CUSTOMERS (id, hqua, tbprice)
+	VALUES (#{id}, '0', '0')
+</insert>
+ <select id="existsCustomerID" parameterType="hashMap" resultType="boolean">
+ 	SELECT if(COUNT(*)>0,'false', 'true')
+ 	FROM CUSTOMERS
+ 	WHERE id LIKE #{id}
+ </select>
+ <select id="selectCustomer" resultMap="customerMap">
+ 	SELECT * 
+ 	FROM CUSTOMERS
+ 	WHERE id LIKE #{id}
+ </select>
+ <update id="updateCust" parameterType="hashMap">
+ UPDATE CUSTOMERS 
+	SET tbprice = #{tb},
+		  hqua = #{hq}
+	WHERE ID LIKE #{id}
+ </update>
+ <!-- custService -->
+    <select id="countCustServices" resultType="int">
+         SELECT COUNT(*) FROM CS
+   </select>
+   <select id="selectCustServiceList"  resultMap="customerActionMap" parameterType="com.once.web.Proxy">
+	SELECT *
+    FROM CS
+    ORDER BY csq DESC
+    limit #{startRow}, #{pageSize};
+   </select>
+   <select id="selectCustService" resultMap="customerActionMap">
+   SELECT *
+   FROM CS
+   WHERE CSQ LIKE #{customerActionSeq};
+   </select>
+   <select id="searchCountCustServices" resultType="int" parameterType="string">
+      SELECT DISTINCT COUNT(*)
+	  FROM CS
+	  WHERE TITLE LIKE #{search};
+   </select>
+   <select id="selectSearchCustServiceList" resultMap="customerActionMap" 
+   			parameterType="com.once.web.Proxy">
+	SELECT DISTINCT *
+    FROM CS
+    WHERE TITLE LIKE #{search}
+    ORDER BY csq DESC
+    limit #{startRow}, #{pageSize};
+   </select>
+   <update id="updateViews" parameterType="hashMap">
+    UPDATE 
+        CS 
+      SET 
+        VIEWS = VIEWS + 1 
+    WHERE 
+      CSQ= #{csq};
+   </update>
+   <!-- once hisMapper -->
+   <insert id="insertOnceCount" parameterType="hashMap">
+	INSERT INTO ONCE_HISTORY(tseq,
+							 current_count, 
+							  price,
+							  date)
+		VALUES (NULL,
+				#{currentCount},
+				#{price},
+				now())
+	</insert>
+	<select id="selectOnceCount" resultType="hashMap">
+				SELECT seq,	
+					   tseq,
+					   current_count currentCount,
+					   price,
+					   date   
+				FROM ONCE_HISTORY
+				ORDER BY DATE DESC LIMIT 1
+	</select>
+	<select id="selectprice" resultMap="historyMap">
+				SELECT seq,	
+					   tseq,
+					   current_count currentCount,
+					   price,
+					   date  
+				FROM ONCE_HISTORY
+				ORDER BY DATE DESC LIMIT 2
+	</select>
+	<select id="selectAllList" resultMap="historyMap">
+			SELECT   seq,	
+					 tseq,
+					 current_count currentCount,
+					  price,
+					  date 
+			FROM ONCE_HISTORY
+	</select>
+	<!-- transactions -->
+	<select id="selectTxByUserid" resultMap="txMap"
+					parameterType="string">
+	    SELECT *
+	    FROM TRANSACTIONS as t
+	        inner join CUSTOMERS as c
+	        on t.id like c.id
+	    WHERE t.id LIKE #{value}
+	    ORDER BY date DESC
+	</select>
+	<insert id="insertTx" parameterType="hashMap">
+		INSERT INTO TRANSACTIONS (id,
+								  rw, 
+								  unit, 
+								  nprice, 
+								  date,
+								  tprice,
+								  dmoney)
+				    VALUES(#{id},
+				    		#{rw},
+				    		 #{unit}, 
+				    		 #{nprice},
+				    		 #{date},
+				    		 #{tprice},
+				    		 #{dmoney})
+	</insert>
+	<select id="selectTx" resultMap="txMap">
+		SELECT *
+	    FROM TRANSACTIONS 
+	    ORDER BY date DESC
+	</select>
+</mapper>
